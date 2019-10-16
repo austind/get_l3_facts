@@ -81,27 +81,43 @@ def main():
         required=True,
         type=arg_list,
     )
-    parser.add_argument("--username", "-u", help="Username", default=getpass.getuser())
-    parser.add_argument("--password", "-p", help="Password", default=getpass.getpass())
     parser.add_argument(
-        "--secret", "-s", help="Enable secret", default=getpass.getpass("Secret: ")
+        "--username", "-u", help="Username to use when logging into HOSTS"
     )
+    parser.add_argument(
+        "--password", "-p", help="Password to use when logging into HOSTS"
+    )
+    parser.add_argument("--secret", "-s", help="Enable secret to pass to NAPALM")
     parser.add_argument(
         "--output",
         "-o",
-        help="Save as CSV to this path",
+        help="Full path to save CSV output to (default: l3_facts.csv)",
         dest="csv_path",
-        required=True,
+        default="l3_facts.csv",
     )
-    parser.add_argument("--driver", help="NAPALM network driver to use", default="ios")
+    parser.add_argument(
+        "--driver",
+        help="Network driver for NAPALM to use (default: ios)",
+        default="ios",
+    )
     parser.add_argument(
         "--ssh-config",
         "-c",
-        help="Pass this SSH config file to NAPALM",
+        help="SSH config file for NAPALM to use (default: ~/.ssh/config)",
         default="~/.ssh/config",
         dest="ssh_config",
     )
     args = parser.parse_args()
+
+    # If we handle these defaults in argparse above, it will require a password no matter what,
+    # even when dry-running with --help
+    if not args.username:
+        username = getpass.getuser()
+        args.username = input("Username [{}]: ".format(username)) or username
+    if not args.password:
+        args.password = getpass.getpass()
+    if not args.secret:
+        args.secret = getpass.getpass("Enable secret: ")
 
     results = []
     for host in args.hosts:
