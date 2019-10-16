@@ -1,33 +1,28 @@
+import argparse
 import csv
 import napalm
 import getpass
-import argparse
 import ipaddress
 
 def arg_list(string):
     return string.split(',')
 
-def save_csv(csv_file, output):
-    fieldnames = [
-        'device',
-        'interface',
-        'address',
-        'prefix_length',
-        'cidr',
-        'netmask',
-        'network',
-        'description',
-    ]
-    with open(csv_file, 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(output)
+def open_device(host, driver, username, password, secret, ssh_config):
+    napalm_driver = napalm.get_network_driver(driver)
+    device = napalm_driver(
+        hostname=host,
+        username=username,
+        password=password,
+        optional_args={'secret': secret, "ssh_config_file": ssh_config},
+    )
+    device.open()
+    return device
 
-def parse_ifaces(device, ifaces, ifaces_ip):
-    """ Parses output from NAPALM's get_interfaces() and get_interfaces_ip() methods.
-        Returns a list of dictionaries of combined data for each IP address.
-    """
-    output = []
+def get_iface_facts(device):
+    """ Returns interface facts for a single device """
+    ifaces = device.get_interfaces()
+    ifaces_ip = device.get_interfaces_ip()
+    results = []
     for iface, attrs in ifaces.items():
         ip_attrs = ifaces_ip.get(iface)
         if ip_attrs:
@@ -39,8 +34,8 @@ def parse_ifaces(device, ifaces, ifaces_ip):
                 addr = ipaddress.ip_interface(cidr)
                 network = str(addr.network)
                 netmask = str(addr.netmask)
-                output.append({
-                    'device': device,
+                results.append({
+                    'device': device.hostname,
                     'interface': iface,
                     'description': attrs.get('description'),
                     'address': address,
@@ -49,19 +44,36 @@ def parse_ifaces(device, ifaces, ifaces_ip):
                     'network': network,
                     'netmask': netmask,
                 })
-    return output
+    return results
+
+def save_csv(csv_path, output):
+    """ Saves output to CSV """
+    fieldnames = [
+        'device',
+        'interface',
+        'address',
+        'prefix_length',
+        'cidr',
+        'netmask',
+        'network',
+        'description',
+    ]
+    with open(csv_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(output)
 
 def main():
     parser = argparse.ArgumentParser(
         description="Retrieve L3 interface info from a network device"
     )
-    parser.add_argument("--device", "-d", help="IP or FQDN of device", required=True, type=arg_list)
+    parser.add_argument("--hosts", "-H", help="Comma-delimited list of IPs and/or FQDNs to query", required=True, type=arg_list)
     parser.add_argument(
         "--username", "-u", help="Username", default=getpass.getuser())
     parser.add_argument(
         "--password", "-p", help="Password", default=getpass.getpass())
     parser.add_argument('--secret', '-s', help='Enable secret', default=getpass.getpass('Secret: '))
-    parser.add_argument('--output', '-o', help='Save as CSV to this path', required=True)
+    parser.add_argument('--output', '-o', help='Save as CSV to this path', dest='csv_path', required=True)
     parser.add_argument('--driver', help='NAPALM network driver to use', default='ios')
     parser.add_argument(
         "--ssh-config",
@@ -71,21 +83,14 @@ def main():
         dest="ssh_config",
     )
     args = parser.parse_args()
-
-    napalm_driver = napalm.get_network_driver(args.driver)
-    device = napalm_driver(
-        hostname=args.device[0],
-        username=args.username,
-        password=args.password,
-        optional_args={"ssh_config_file": args.ssh_config, 'secret': args.secret},
-    )
-    device.open()
-    ifaces = device.get_interfaces()
-    ifaces_ip = device.get_interfaces_ip()
-    device.close()
-    output = parse_ifaces(args.device, ifaces, ifaces_ip)
-    print('Found {} L3 interfaces on {}'.format(len(ifaces_ip), args.device))
-    save_csv(args.output, output)
+    
+    results = []
+    for host in args.hosts:
+        device = open_device(host, args.driver, args.username, args.password, args.secret, args.ssh_config)
+        iface_facts = get_iface_facts(device)
+        device.close()
+        results = results + iface_facts
+    save_csv(args.csv_path, results)
 
 if __name__ == '__main__':
     main()
