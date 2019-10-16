@@ -14,6 +14,7 @@ parser.add_argument(
     "--password", "-p", help="Password", default=getpass.getpass())
 parser.add_argument('--secret', '-s', help='Enable secret', default=getpass.getpass('Secret: '))
 parser.add_argument('--output', '-o', help='Save as CSV to this path')
+parser.add_argument('--driver', help='NAPALM network driver to use', default='ios')
 parser.add_argument(
     "--ssh-config",
     "-c",
@@ -23,14 +24,13 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-napalm_driver = napalm.get_network_driver('ios')
+napalm_driver = napalm.get_network_driver(args.driver)
 device = napalm_driver(
     hostname=args.device,
     username=args.username,
     password=args.password,
     optional_args={"ssh_config_file": args.ssh_config, 'secret': args.secret},
 )
-
 device.open()
 ifaces = device.get_interfaces()
 ifaces_ip = device.get_interfaces_ip()
