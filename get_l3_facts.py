@@ -23,7 +23,7 @@ def open_device(host, driver, username, password, secret, ssh_config):
 
 
 def get_iface_facts(device):
-    """ Returns interface facts for a single device """
+    """ Returns formatted interface facts for a single device """
     ifaces = device.get_interfaces()
     ifaces_ip = device.get_interfaces_ip()
     results = []
@@ -40,7 +40,7 @@ def get_iface_facts(device):
                 netmask = str(addr.netmask)
                 results.append(
                     {
-                        "device": device.hostname,
+                        "hostname": device.hostname,
                         "interface": iface,
                         "description": attrs.get("description"),
                         "address": address,
@@ -56,7 +56,7 @@ def get_iface_facts(device):
 def save_csv(csv_path, output):
     """ Saves output to CSV """
     fieldnames = [
-        "device",
+        "hostname",
         "interface",
         "address",
         "prefix_length",
@@ -72,9 +72,8 @@ def save_csv(csv_path, output):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Retrieve L3 interface info from a network device"
-    )
+    """ Save L3 interface info from a collection of network devices to CSV. """
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--hosts",
         "-H",
