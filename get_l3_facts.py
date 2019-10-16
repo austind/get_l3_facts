@@ -1,3 +1,4 @@
+import csv
 import napalm
 import getpass
 import argparse
@@ -13,7 +14,7 @@ parser.add_argument(
 parser.add_argument(
     "--password", "-p", help="Password", default=getpass.getpass())
 parser.add_argument('--secret', '-s', help='Enable secret', default=getpass.getpass('Secret: '))
-parser.add_argument('--output', '-o', help='Save as CSV to this path')
+parser.add_argument('--output', '-o', help='Save as CSV to this path', required=True)
 parser.add_argument('--driver', help='NAPALM network driver to use', default='ios')
 parser.add_argument(
     "--ssh-config",
@@ -34,6 +35,7 @@ device = napalm_driver(
 device.open()
 ifaces = device.get_interfaces()
 ifaces_ip = device.get_interfaces_ip()
+device.close()
 output = []
 for iface, attrs in ifaces.items():
     ip_attrs = ifaces_ip.get(iface)
@@ -56,5 +58,17 @@ for iface, attrs in ifaces.items():
                 'network': network,
                 'netmask': netmask,
             })
-pprint.pprint(output)
-device.close()
+print('Found {} L3 interfaces on {}'.format(len(ifaces_ip), args.device))
+fieldnames = [
+    'device',
+    'interface',
+    'cidr',
+    'prefix_length',
+    'address',
+    'netmask',
+    'network',
+    'description',
+]
+with open(args.output, 'w', newline='') as f:
+    writer = csv.DictWriter(f, fieldnames=fieldnames)
+    writer.writerows(output)
