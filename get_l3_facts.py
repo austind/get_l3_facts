@@ -23,6 +23,34 @@ def save_csv(csv_file, output):
         writer.writeheader()
         writer.writerows(output)
 
+def parse_ifaces(device, ifaces, ifaces_ip):
+    """ Parses output from NAPALM's get_interfaces() and get_interfaces_ip() methods.
+        Returns a list of dictionaries of combined data for each IP address.
+    """
+    output = []
+    for iface, attrs in ifaces.items():
+        ip_attrs = ifaces_ip.get(iface)
+        if ip_attrs:
+            attrs.update(ifaces_ip.get(iface))
+            ipv4 = attrs.get('ipv4')
+            for address, prefix in ipv4.items():
+                prefix_length = prefix.get('prefix_length')
+                cidr = '{}/{}'.format(address, prefix_length)
+                addr = ipaddress.ip_interface(cidr)
+                network = str(addr.network)
+                netmask = str(addr.netmask)
+                output.append({
+                    'device': device,
+                    'interface': iface,
+                    'description': attrs.get('description'),
+                    'address': address,
+                    'prefix_length': prefix_length,
+                    'cidr': cidr,
+                    'network': network,
+                    'netmask': netmask,
+                })
+    return output
+
 def main():
     parser = argparse.ArgumentParser(
         description="Retrieve L3 interface info from a network device"
@@ -55,28 +83,7 @@ def main():
     ifaces = device.get_interfaces()
     ifaces_ip = device.get_interfaces_ip()
     device.close()
-    output = []
-    for iface, attrs in ifaces.items():
-        ip_attrs = ifaces_ip.get(iface)
-        if ip_attrs:
-            attrs.update(ifaces_ip.get(iface))
-            ipv4 = attrs.get('ipv4')
-            for address, prefix in ipv4.items():
-                prefix_length = prefix.get('prefix_length')
-                cidr = '{}/{}'.format(address, prefix_length)
-                addr = ipaddress.ip_interface(cidr)
-                network = str(addr.network)
-                netmask = str(addr.netmask)
-                output.append({
-                    'device': args.device,
-                    'interface': iface,
-                    'description': attrs.get('description'),
-                    'address': address,
-                    'prefix_length': prefix_length,
-                    'cidr': cidr,
-                    'network': network,
-                    'netmask': netmask,
-                })
+    output = parse_ifaces(args.device, ifaces, ifaces_ip)
     print('Found {} L3 interfaces on {}'.format(len(ifaces_ip), args.device))
     save_csv(args.output, output)
 
