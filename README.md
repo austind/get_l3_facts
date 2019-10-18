@@ -20,6 +20,8 @@ Column schema:
 * `cidr` - IP address in CIDR notation: `address`/`prefix_length`
 * `netmask` - Netmask formatted in dotted-decimal
 * `network` - CIDR-notated network ID that the `address` resides within
+* `is_enabled` - Whether or not the interface is administratively enabled (true/false)
+* `is_up` - Whether or not the interface is up/up (true/false)
 * `description` - Interface description (if any)
 
 ## Usage
@@ -54,20 +56,20 @@ get_l3_facts - Done
 Resulting CSV:
 
 ```
-device,interface,address,prefix_length,cidr,netmask,network,description
-router1,Vlan10,10.0.32.1,24,10.0.32.1/24,255.255.255.0,10.0.32.0/24,Mgmt
-router1,Vlan15,10.0.34.1,23,10.0.34.1/23,255.255.254.0,10.0.34.0/23,Staff
-router1,Vlan15,210.155.195.33,29,210.155.195.33/29,255.255.255.248,210.155.195.32/29,Staff
-router1,Vlan15,210.155.195.17,29,210.155.195.17/29,255.255.255.248,210.155.195.16/29,Staff
-router1,Vlan20,10.0.33.1,24,10.0.33.1/24,255.255.255.0,10.0.33.0/24,Cameras
-router1,Vlan25,10.0.36.1,24,10.0.36.1/24,255.255.255.0,10.0.36.0/24,Lab1
-router1,Vlan35,10.0.37.1,24,10.0.37.1/24,255.255.255.0,10.0.37.0/24,Lab2
-router1,Vlan45,10.0.38.1,23,10.0.38.1/23,255.255.254.0,10.0.38.0/23,Students
-router2,GigabitEthernet1/0/1,10.250.80.10,30,10.250.80.10/30,255.255.255.252,10.250.80.8/30,
-router2,GigabitEthernet1/0/2,10.250.80.21,30,10.250.80.21/30,255.255.255.252,10.250.80.20/30,
-router2,GigabitEthernet1/0/3,10.250.80.25,30,10.250.80.25/30,255.255.255.252,10.250.80.24/30,
-10.216.46.1,Vlan10,10.216.46.1,23,10.216.46.1/23,255.255.254.0,10.216.46.0/23,LAN
-10.216.46.1,GigabitEthernet0/3,10.250.80.26,30,10.250.80.26/30,255.255.255.252,10.250.80.24/30,UPLINK
+device,interface,address,prefix_length,cidr,netmask,network,is_enabled,is_up,description
+router1,Vlan10,10.0.32.1,24,10.0.32.1/24,255.255.255.0,10.0.32.0/24,TRUE,TRUE,Mgmt
+router1,Vlan15,10.0.34.1,23,10.0.34.1/23,255.255.254.0,10.0.34.0/23,TRUE,TRUE,Staff
+router1,Vlan15,210.155.195.33,29,210.155.195.33/29,255.255.255.248,210.155.195.32/29,TRUE,TRUE,Staff
+router1,Vlan15,210.155.195.17,29,210.155.195.17/29,255.255.255.248,210.155.195.16/29,TRUE,TRUE,Staff
+router1,Vlan20,10.0.33.1,24,10.0.33.1/24,255.255.255.0,10.0.33.0/24,TRUE,TRUE,Cameras
+router1,Vlan25,10.0.36.1,24,10.0.36.1/24,255.255.255.0,10.0.36.0/24,TRUE,TRUE,Lab1
+router1,Vlan35,10.0.37.1,24,10.0.37.1/24,255.255.255.0,10.0.37.0/24,TRUE,TRUE,Lab2
+router1,Vlan45,10.0.38.1,23,10.0.38.1/23,255.255.254.0,10.0.38.0/23,TRUE,TRUE,Students
+router2,GigabitEthernet1/0/1,10.250.80.10,30,10.250.80.10/30,255.255.255.252,10.250.80.8/30,TRUE,TRUE,
+router2,GigabitEthernet1/0/2,10.250.80.21,30,10.250.80.21/30,255.255.255.252,10.250.80.20/30,TRUE,TRUE,
+router2,GigabitEthernet1/0/3,10.250.80.25,30,10.250.80.25/30,255.255.255.252,10.250.80.24/30,TRUE,TRUE,
+10.216.46.1,Vlan10,10.216.46.1,23,10.216.46.1/23,255.255.254.0,10.216.46.0/23,LAN,TRUE,TRUE,
+10.216.46.1,GigabitEthernet0/3,10.250.80.26,30,10.250.80.26/30,255.255.255.252,10.250.80.24/30,TRUE,TRUE,UPLINK
 ```
 
 ## Arguments

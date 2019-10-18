@@ -49,6 +49,8 @@ def get_iface_facts(device):
                         "cidr": cidr,
                         "network": network,
                         "netmask": netmask,
+                        "is_enabled": attrs.get("is_enabled"),
+                        "is_up": attrs.get("is_up"),
                     }
                 )
     return results
@@ -64,6 +66,8 @@ def save_csv(csv_path, output):
         "cidr",
         "netmask",
         "network",
+        "is_enabled",
+        "is_up",
         "description",
     ]
     with open(csv_path, "w", newline="") as f:
