@@ -1,8 +1,9 @@
 import argparse
 import csv
-import napalm
 import getpass
 import ipaddress
+import logging
+import napalm
 
 
 def arg_list(string):
@@ -96,6 +97,9 @@ def main():
         default="l3_facts.csv",
     )
     parser.add_argument(
+        "--loglevel", "-l", help="Log level verbosity. (default: info)", default="info"
+    )
+    parser.add_argument(
         "--driver",
         help="Network driver for NAPALM to use (default: ios)",
         default="ios",
@@ -119,8 +123,24 @@ def main():
     if not args.secret:
         args.secret = getpass.getpass("Enable secret: ")
 
+    log_level = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(log_level, int):
+        raise ValueError("Invalid log level: {}".format(args.loglevel))
+    log = logging.getLogger(__name__)
+    log.setLevel(log_level)
+    formatter = logging.Formatter("get_l3_facts - %(message)s")
+    ch = logging.StreamHandler()
+    ch.setLevel(log_level)
+    ch.setFormatter(formatter)
+    log.addHandler(ch)
+
     results = []
+    i = 0
     for host in args.hosts:
+        i += 1
+        progress = "[{} / {}]".format(i, len(args.hosts))
+        msg = "Opening connection to {}".format(host)
+        log.info("{}: {}".format(progress, msg))
         device = open_device(
             host,
             args.driver,
@@ -129,10 +149,21 @@ def main():
             args.secret,
             args.ssh_config,
         )
+        msg = "Getting interface facts"
+        log.info("{}: {}".format(progress, msg))
         iface_facts = get_iface_facts(device)
+        msg = "Found {} addresses".format(len(iface_facts))
+        log.info("{}: {}".format(progress, msg))
+        msg = "Closing connection to {}".format(host)
+        log.info("{}: {}".format(progress, msg))
         device.close()
         results = results + iface_facts
+    msg = "Found {} addresses total".format(len(results), len(args.hosts))
+    log.info(msg)
+    msg = "Saving results to {}".format(args.csv_path)
+    log.info(msg)
     save_csv(args.csv_path, results)
+    log.info("Done")
 
 
 if __name__ == "__main__":
