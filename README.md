@@ -24,8 +24,8 @@ Column schema:
 
 ## Usage
 
-The only required option is `-H`, a comma-delimited list of hostnames, FQDNs, and/or IP addresses of devices to query.
-All other options are either optional, inferred, or prompted at runtime.
+The only required argument is `-H`, a comma-delimited list of hostnames, FQDNs, and/or IP addresses of devices to query.
+All other arguments are either optional, inferred, or prompted at runtime.
 
 ### Example
 
@@ -70,7 +70,7 @@ router2,GigabitEthernet1/0/3,10.250.80.25,30,10.250.80.25/30,255.255.255.252,10.
 10.216.46.1,GigabitEthernet0/3,10.250.80.26,30,10.250.80.26/30,255.255.255.252,10.250.80.24/30,UPLINK
 ```
 
-## Options
+## Arguments
 
 ```
 $ python3 get_l3_facts.py --help
