@@ -1,9 +1,78 @@
+#!/usr/bin/env python3
+
+import sys
+import os
 import argparse
 import csv
 import getpass
 import ipaddress
 import logging
 import napalm
+
+
+def get_args(args):
+    """
+    Function to gather all of the needed arguments
+    Returns supplied args
+    """
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--hosts",
+        "-H",
+        help="Comma-delimited list of IPs and/or FQDNs to query",
+        type=arg_list,
+    )
+    group.add_argument(
+        "--file",
+        "-f",
+        help="Text file with list of IPs and/or FQDNs (one per line) to query",
+        type=str,
+    )
+    parser.add_argument(
+        "--username", "-u", help="Username to use when logging into HOSTS"
+    )
+    parser.add_argument(
+        "--password", "-p", help="Password to use when logging into HOSTS"
+    )
+    parser.add_argument("--secret", "-s", help="Enable secret to pass to NAPALM")
+    parser.add_argument(
+        "--output",
+        "-o",
+        help="Full path to save CSV output to (default: l3_facts.csv)",
+        dest="csv_path",
+        default="l3_facts.csv",
+    )
+    parser.add_argument(
+        "--loglevel", "-l", help="Log level verbosity. (default: info)", default="info"
+    )
+    parser.add_argument(
+        "--driver",
+        help="Network driver for NAPALM to use (default: ios)",
+        default="ios",
+    )
+    parser.add_argument(
+        "--ssh-config",
+        "-c",
+        help="SSH config file for NAPALM to use (default: ~/.ssh/config)",
+        default="~/.ssh/config",
+        dest="ssh_config",
+    )
+    args = parser.parse_args()
+    if args.file:
+        if not os.path.exists(args.file):
+            raise FileNotFoundError("File {} does not exist".format(args.file))
+    if not args.username:
+        username = getpass.getuser()
+        args.username = input("Username [{}]: ".format(username)) or username
+    if not args.password:
+        args.password = getpass.getpass()
+    if not args.secret:
+        args.secret = getpass.getpass("Enable secret: ")
+    if not (args.hosts or args.file):
+        parser.error("No host input")
+        return None
+    return args
 
 
 def arg_list(string):
@@ -29,8 +98,7 @@ def get_iface_facts(device):
     ifaces_ip = device.get_interfaces_ip()
     results = []
     for iface, attrs in ifaces.items():
-        ip_attrs = ifaces_ip.get(iface)
-        if ip_attrs:
+        if ifaces_ip.get(iface):
             attrs.update(ifaces_ip.get(iface))
             ipv4 = attrs.get("ipv4")
             for address, prefix in ipv4.items():
@@ -76,57 +144,9 @@ def save_csv(csv_path, output):
         writer.writerows(output)
 
 
-def main():
+def main(argv):
     """ Save L3 interface info from a collection of network devices to CSV. """
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--hosts",
-        "-H",
-        help="Comma-delimited list of IPs and/or FQDNs to query",
-        required=True,
-        type=arg_list,
-    )
-    parser.add_argument(
-        "--username", "-u", help="Username to use when logging into HOSTS"
-    )
-    parser.add_argument(
-        "--password", "-p", help="Password to use when logging into HOSTS"
-    )
-    parser.add_argument("--secret", "-s", help="Enable secret to pass to NAPALM")
-    parser.add_argument(
-        "--output",
-        "-o",
-        help="Full path to save CSV output to (default: l3_facts.csv)",
-        dest="csv_path",
-        default="l3_facts.csv",
-    )
-    parser.add_argument(
-        "--loglevel", "-l", help="Log level verbosity. (default: info)", default="info"
-    )
-    parser.add_argument(
-        "--driver",
-        help="Network driver for NAPALM to use (default: ios)",
-        default="ios",
-    )
-    parser.add_argument(
-        "--ssh-config",
-        "-c",
-        help="SSH config file for NAPALM to use (default: ~/.ssh/config)",
-        default="~/.ssh/config",
-        dest="ssh_config",
-    )
-    args = parser.parse_args()
-
-    # If we handle these defaults in argparse above, it will require a password no matter what,
-    # even when dry-running with --help
-    if not args.username:
-        username = getpass.getuser()
-        args.username = input("Username [{}]: ".format(username)) or username
-    if not args.password:
-        args.password = getpass.getpass()
-    if not args.secret:
-        args.secret = getpass.getpass("Enable secret: ")
-
+    args = get_args(argv[1:])
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
         raise ValueError("Invalid log level: {}".format(args.loglevel))
@@ -139,10 +159,15 @@ def main():
     log.addHandler(ch)
 
     results = []
-    i = 0
-    for host in args.hosts:
-        i += 1
-        progress = "[{} / {}]".format(i, len(args.hosts))
+    hosts = []
+    if args.file:
+        with open(args.file, "r") as f:
+            hosts = f.read().splitlines()
+    else:
+        hosts = args.hosts
+
+    for c, host in enumerate(hosts, 1):
+        progress = "[{} / {}]".format(c, len(hosts))
         msg = "Opening connection to {}".format(host)
         log.info("{}: {}".format(progress, msg))
         device = open_device(
@@ -162,7 +187,7 @@ def main():
         log.info("{}: {}".format(progress, msg))
         device.close()
         results = results + iface_facts
-    msg = "Found {} addresses total".format(len(results), len(args.hosts))
+    msg = "Found {} addresses total".format(len(results))
     log.info(msg)
     msg = "Saving results to {}".format(args.csv_path)
     log.info(msg)
@@ -171,4 +196,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(sys.argv))
