@@ -10,7 +10,7 @@ import logging
 import napalm
 
 
-def get_args(args):
+def get_args():
     """
     Function to gather all of the needed arguments
     Returns supplied args
@@ -24,8 +24,8 @@ def get_args(args):
         type=arg_list,
     )
     group.add_argument(
-        "--file",
-        "-f",
+        "--input",
+        "-i",
         help="Text file with list of IPs and/or FQDNs (one per line) to query",
         type=str,
     )
@@ -59,9 +59,9 @@ def get_args(args):
         dest="ssh_config",
     )
     args = parser.parse_args()
-    if args.file:
-        if not os.path.exists(args.file):
-            raise FileNotFoundError("File {} does not exist".format(args.file))
+    if args.input:
+        if not os.path.exists(args.input):
+            raise FileNotFoundError("File {} does not exist".format(args.input))
     if not args.username:
         username = getpass.getuser()
         args.username = input("Username [{}]: ".format(username)) or username
@@ -69,7 +69,7 @@ def get_args(args):
         args.password = getpass.getpass()
     if not args.secret:
         args.secret = getpass.getpass("Enable secret: ")
-    if not (args.hosts or args.file):
+    if not (args.hosts or args.input):
         parser.error("No host input")
         return None
     return args
@@ -144,9 +144,9 @@ def save_csv(csv_path, output):
         writer.writerows(output)
 
 
-def main(argv):
+def main():
     """ Save L3 interface info from a collection of network devices to CSV. """
-    args = get_args(argv[1:])
+    args = get_args()
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
         raise ValueError("Invalid log level: {}".format(args.loglevel))
@@ -160,8 +160,8 @@ def main(argv):
 
     results = []
     hosts = []
-    if args.file:
-        with open(args.file, "r") as f:
+    if args.input:
+        with open(args.input, "r") as f:
             hosts = f.read().splitlines()
     else:
         hosts = args.hosts
@@ -196,4 +196,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    main()
