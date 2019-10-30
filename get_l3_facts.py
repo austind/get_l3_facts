@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import sys
-import os
 import argparse
 import csv
 import getpass
 import ipaddress
 import logging
+import os
+
 import napalm
 
 
