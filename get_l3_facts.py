@@ -66,8 +66,9 @@ def get_args():
         "--timeout",
         "-T",
         help="Connection timeout (sec) to pass to NAPALM. (default: 120s)",
-        default=120
+        default=120,
         dest="timeout"
+    )
     args = parser.parse_args()
     if args.input:
         if not os.path.exists(args.input):
@@ -110,6 +111,8 @@ def get_iface_facts(host, args):
     )
     ifaces = device.get_interfaces()
     ifaces_ip = device.get_interfaces_ip()
+    import pprint
+    pprint.pprint(ifaces_ip)
     device.close()
     results = []
     for iface, attrs in ifaces.items():
