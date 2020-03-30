@@ -5,9 +5,8 @@ import csv
 import getpass
 import ipaddress
 import logging
-import os
-
 import napalm
+import os
 
 
 def get_args():
@@ -26,7 +25,7 @@ def get_args():
     group.add_argument(
         "--input",
         "-i",
-        help="Text file with list of IPs and/or FQDNs (one per line) to query",
+        help="Text file with list of IPs and/or FQDNs to query (one per line)",
         type=str,
     )
     parser.add_argument(
@@ -61,10 +60,10 @@ def get_args():
     args = parser.parse_args()
     if args.input:
         if not os.path.exists(args.input):
-            raise FileNotFoundError("File {} does not exist".format(args.input))
+            raise FileNotFoundError(f"File {args.input} does not exist")
     if not args.username:
         username = getpass.getuser()
-        args.username = input("Username [{}]: ".format(username)) or username
+        args.username = input(f"Username [{username}]: ") or username
     if not args.password:
         args.password = getpass.getpass()
     if not args.secret:
@@ -149,7 +148,7 @@ def main():
     args = get_args()
     log_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(log_level, int):
-        raise ValueError("Invalid log level: {}".format(args.loglevel))
+        raise ValueError(f"Invalid log level: {args.loglevel}")
     log = logging.getLogger(__name__)
     log.setLevel(log_level)
     formatter = logging.Formatter("get_l3_facts - %(message)s")
@@ -168,8 +167,8 @@ def main():
 
     for c, host in enumerate(hosts, 1):
         progress = "[{} / {}]".format(c, len(hosts))
-        msg = "Opening connection to {}".format(host)
-        log.info("{}: {}".format(progress, msg))
+        msg = f"Opening connection to {host}"
+        log.info(f"{progress}: {msg}")
         device = open_device(
             host,
             args.driver,
@@ -183,13 +182,13 @@ def main():
         iface_facts = get_iface_facts(device)
         msg = "Found {} addresses".format(len(iface_facts))
         log.info("{}: {}".format(progress, msg))
-        msg = "Closing connection to {}".format(host)
+        msg = f"Closing connection to {host}"
         log.info("{}: {}".format(progress, msg))
         device.close()
         results = results + iface_facts
     msg = "Found {} addresses total".format(len(results))
     log.info(msg)
-    msg = "Saving results to {}".format(args.csv_path)
+    msg = f"Saving results to {args.csv_path}"
     log.info(msg)
     save_csv(args.csv_path, results)
     log.info("Done")
