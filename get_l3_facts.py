@@ -67,7 +67,7 @@ def get_args():
         "-T",
         help="Connection timeout (sec) to pass to NAPALM. (default: 120s)",
         default=120,
-        dest="timeout"
+        dest="timeout",
     )
     args = parser.parse_args()
     if args.input:
@@ -81,7 +81,9 @@ def get_args():
     if not args.secret:
         args.secret = getpass.getpass("Enable secret: ")
     if not (args.hosts or args.input):
-        parser.error("No host input, cannot continue. Must provide either --hosts or --input.")
+        parser.error(
+            "No host input, cannot continue. Must provide either --hosts or --input."
+        )
         exit(1)
     return args
 
@@ -107,12 +109,16 @@ def open_device(host, driver, username, password, secret, timeout, ssh_config):
 def get_iface_facts(host, args):
     """ Returns formatted interface facts for a single device """
     device = open_device(
-        host, args.driver, args.username, args.password, args.secret, args.timeout, args.ssh_config
+        host,
+        args.driver,
+        args.username,
+        args.password,
+        args.secret,
+        args.timeout,
+        args.ssh_config,
     )
     ifaces = device.get_interfaces()
     ifaces_ip = device.get_interfaces_ip()
-    import pprint
-    pprint.pprint(ifaces_ip)
     device.close()
     results = []
     for iface, attrs in ifaces.items():
