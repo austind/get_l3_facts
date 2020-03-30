@@ -2,11 +2,12 @@
 
 import argparse
 import csv
+from concurrent.futures import ThreadPoolExecutor
 import getpass
 import ipaddress
-import logging
 import napalm
 import os
+import tqdm
 
 
 def get_args():
@@ -38,12 +39,9 @@ def get_args():
     parser.add_argument(
         "--output",
         "-o",
-        help="Full path to save CSV output to (default: l3_facts.csv)",
+        help="Full path to save CSV output to (default: ./l3_facts.csv)",
         dest="csv_path",
-        default="l3_facts.csv",
-    )
-    parser.add_argument(
-        "--loglevel", "-l", help="Log level verbosity. (default: info)", default="info"
+        default="./l3_facts.csv",
     )
     parser.add_argument(
         "--driver",
@@ -57,6 +55,19 @@ def get_args():
         default="~/.ssh/config",
         dest="ssh_config",
     )
+    parser.add_argument(
+        "--max-threads",
+        "-t",
+        help="Maximum number of concurrent connections. (default: Python version default)",
+        default=None,
+        dest="threads",
+    )
+    parser.add_argument(
+        "--timeout",
+        "-T",
+        help="Connection timeout (sec) to pass to NAPALM. (default: 120s)",
+        default=120
+        dest="timeout"
     args = parser.parse_args()
     if args.input:
         if not os.path.exists(args.input):
@@ -69,8 +80,8 @@ def get_args():
     if not args.secret:
         args.secret = getpass.getpass("Enable secret: ")
     if not (args.hosts or args.input):
-        parser.error("No host input")
-        return None
+        parser.error("No host input, cannot continue. Must provide either --hosts or --input.")
+        exit(1)
     return args
 
 
@@ -78,23 +89,28 @@ def arg_list(string):
     return string.split(",")
 
 
-def open_device(host, driver, username, password, secret, ssh_config):
+def open_device(host, driver, username, password, secret, timeout, ssh_config):
     """ Opens connection to host and returns NAPALM object """
     napalm_driver = napalm.get_network_driver(driver)
     device = napalm_driver(
         hostname=host,
         username=username,
         password=password,
+        timeout=timeout,
         optional_args={"secret": secret, "ssh_config_file": ssh_config},
     )
     device.open()
     return device
 
 
-def get_iface_facts(device):
+def get_iface_facts(host, args):
     """ Returns formatted interface facts for a single device """
+    device = open_device(
+        host, args.driver, args.username, args.password, args.secret, args.timeout, args.ssh_config
+    )
     ifaces = device.get_interfaces()
     ifaces_ip = device.get_interfaces_ip()
+    device.close()
     results = []
     for iface, attrs in ifaces.items():
         if ifaces_ip.get(iface):
@@ -146,17 +162,6 @@ def save_csv(csv_path, output):
 def main():
     """ Save L3 interface info from a collection of network devices to CSV. """
     args = get_args()
-    log_level = getattr(logging, args.loglevel.upper(), None)
-    if not isinstance(log_level, int):
-        raise ValueError(f"Invalid log level: {args.loglevel}")
-    log = logging.getLogger(__name__)
-    log.setLevel(log_level)
-    formatter = logging.Formatter("get_l3_facts - %(message)s")
-    ch = logging.StreamHandler()
-    ch.setLevel(log_level)
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
-
     results = []
     hosts = []
     if args.input:
@@ -165,33 +170,15 @@ def main():
     else:
         hosts = args.hosts
 
-    for c, host in enumerate(hosts, 1):
-        progress = "[{} / {}]".format(c, len(hosts))
-        msg = f"Opening connection to {host}"
-        log.info(f"{progress}: {msg}")
-        device = open_device(
-            host,
-            args.driver,
-            args.username,
-            args.password,
-            args.secret,
-            args.ssh_config,
-        )
-        msg = "Getting interface facts"
-        log.info("{}: {}".format(progress, msg))
-        iface_facts = get_iface_facts(device)
-        msg = "Found {} addresses".format(len(iface_facts))
-        log.info("{}: {}".format(progress, msg))
-        msg = f"Closing connection to {host}"
-        log.info("{}: {}".format(progress, msg))
-        device.close()
-        results = results + iface_facts
-    msg = "Found {} addresses total".format(len(results))
-    log.info(msg)
-    msg = f"Saving results to {args.csv_path}"
-    log.info(msg)
+    with ThreadPoolExecutor(max_workers=args.threads) as pool:
+        threads = []
+        for host in hosts:
+            threads.append(pool.submit(get_iface_facts, host, args))
+
+    for thread in tqdm.tqdm(threads, desc="Progress", unit="Device", ascii=True):
+        results = results + thread.result()
+
     save_csv(args.csv_path, results)
-    log.info("Done")
 
 
 if __name__ == "__main__":
