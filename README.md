@@ -7,6 +7,7 @@ Retrieves IPv4 layer 3 info from network devices, saving output to CSV
 Requires:
 * Python 3.6+
 * [`napalm`](https://github.com/napalm-automation/napalm)
+* [`tqdm`](https://github.com/tqdm/tqdm)
 
 ## Overview
 
@@ -33,24 +34,10 @@ All other arguments are either optional, inferred, or prompted at runtime.
 
 ```
 $ python3 get_l3_facts.py -H router1,router2,10.216.46.1
-Username [austind]:
+Username [adecoup]:
 Password:
 Enable secret:
-get_l3_facts - [1 / 3]: Opening connection to router1
-get_l3_facts - [1 / 3]: Getting interface facts
-get_l3_facts - [1 / 3]: Found 8 addresses
-get_l3_facts - [1 / 3]: Closing connection to router1
-get_l3_facts - [2 / 3]: Opening connection to router2
-get_l3_facts - [2 / 3]: Getting interface facts
-get_l3_facts - [2 / 3]: Found 3 addresses
-get_l3_facts - [2 / 3]: Closing connection to router2
-get_l3_facts - [3 / 3]: Opening connection to 10.216.46.1
-get_l3_facts - [3 / 3]: Getting interface facts
-get_l3_facts - [3 / 3]: Found 2 addresses
-get_l3_facts - [3 / 3]: Closing connection to 10.216.46.1
-get_l3_facts - Found 13 addresses total
-get_l3_facts - Saving results to l3_facts.csv
-get_l3_facts - Done
+Progress: 100%|#########################################################################################################################| 3/3 [00:00<00:00, 6102.29Device/s]
 ```
 
 Resulting CSV:
@@ -76,17 +63,19 @@ router2,GigabitEthernet1/0/3,10.250.80.25,30,10.250.80.25/30,255.255.255.252,10.
 
 ```
 $ python3 get_l3_facts.py --help
-usage: get_l3_facts.py [-h] --hosts HOSTS [--username USERNAME]
-                       [--password PASSWORD] [--secret SECRET]
-                       [--output CSV_PATH] [--loglevel LOGLEVEL]
-                       [--password PASSWORD] [--secret SECRET]
-                       [--output CSV_PATH] [--loglevel LOGLEVEL]
-                       [--driver DRIVER] [--ssh-config SSH_CONFIG]
+usage: get_l3_facts.py [-h] (--hosts HOSTS | --input INPUT)
+                       [--username USERNAME] [--password PASSWORD]
+                       [--secret SECRET] [--output CSV_PATH] [--driver DRIVER]
+                       [--ssh-config SSH_CONFIG] [--max-threads THREADS]
+                       [--timeout TIMEOUT]
 
 optional arguments:
   -h, --help            show this help message and exit
   --hosts HOSTS, -H HOSTS
                         Comma-delimited list of IPs and/or FQDNs to query
+  --input INPUT, -i INPUT
+                        Text file with list of IPs and/or FQDNs to query (one
+                        per line)
   --username USERNAME, -u USERNAME
                         Username to use when logging into HOSTS
   --password PASSWORD, -p PASSWORD
@@ -95,11 +84,12 @@ optional arguments:
                         Enable secret to pass to NAPALM
   --output CSV_PATH, -o CSV_PATH
                         Full path to save CSV output to (default:
-                        l3_facts.csv)
-  --loglevel LOGLEVEL, -l LOGLEVEL
-                        Log level verbosity. (default: info)
+                        ./l3_facts.csv)
   --driver DRIVER       Network driver for NAPALM to use (default: ios)
   --ssh-config SSH_CONFIG, -c SSH_CONFIG
                         SSH config file for NAPALM to use (default:
                         ~/.ssh/config)
+  --max-threads THREADS, -t THREADS
+                        Maximum number of concurrent connections. (default:
+                        Python version default)
 ```
